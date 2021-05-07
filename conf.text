@@ -1,0 +1,27 @@
+[data]
+data_label_dir  = dataset/label_resize/
+save_dir        = ckpt/
+
+test_data_dir  =
+test_label_dir =
+
+
+[training]
+learning_rate   = 8e-6
+batch_size      = 1
+epochs          = 50
+begin_epoch     = 0
+
+
+[test]
+best_model       =30
+predict_label_dir = save/test_label
+predict_labels_dir = save/test_labels
+pck_save_dir    = save/test_pck.csv
+
+
+[predict]
+best_model       =30
+predict_data_dir =
+predict_label_dir =
+predict_labels_dir =
