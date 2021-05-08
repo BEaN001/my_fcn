@@ -28,7 +28,8 @@ batch_size = config.getint('training', 'batch_size')
 epochs = config.getint('training', 'epochs')
 begin_epoch = config.getint('training', 'begin_epoch')
 
-cuda = torch.cuda.is_available()
+# cuda = torch.cuda.is_available()
+cuda = False
 
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -43,8 +44,10 @@ train_dataset = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 # *********************** Build model ***********************
 
 net = VGG_fcn32s(n_class=3)
+# net = VGG_19bn_8s(n_class=3)
 if cuda:
-    net = net.to(device)
+    # net = net.to(device)
+    net.cuda()
 # if cuda:
 #     net = net.cuda(device_ids[0])
 #     net = nn.DataParallel(net, device_ids=device_ids)
@@ -60,8 +63,8 @@ def train(visual_train=False):
     # *********************** initialize optimizer ***********************
     optimizer = optim.Adam(params=net.parameters(), lr=learning_rate)
     criterion = cross_entropy2d_loss()  # loss function pixel-wised softmax cross entropy
-    if cuda:
-        criterion = criterion.to(device)
+    # if cuda:
+    #     criterion = criterion.to(device)
     net.train()
     for epoch in range(begin_epoch, epochs + 1):
         print('epoch....................' + str(epoch))
@@ -73,21 +76,44 @@ def train(visual_train=False):
             # Batch_size  *  1 *  width(256)  *  height(256)
             label = torch.squeeze(label, dim=1).long()
             # Batch_size  *  width(256)  *  height(256)
-            if visual_train:
+            # if visual_train:
+            #     import torchvision.transforms as transforms
+            #     import matplotlib.pyplot as plt
+            #     image_show = image.cpu().float()
+            #     image_show = transforms.ToPILImage()(torch.squeeze(image_show, dim=0))
+            #     plt.subplot(1, 2, 1)
+            #     plt.imshow(image_show)
+            #     # plt.pause(5)
+            #     label_show = torch.squeeze(label.cpu().float(), dim=0)
+            #     plt.subplot(1, 2, 2)
+            #     plt.imshow(label_show)
+            #     plt.show()
+            optimizer.zero_grad()
+            pred = net(image)  # 4D tensor:  batch size * c * 256 * 256
+
+            if visual_train and epoch % 20 == 0:
                 import torchvision.transforms as transforms
                 import matplotlib.pyplot as plt
                 image_show = image.cpu().float()
                 image_show = transforms.ToPILImage()(torch.squeeze(image_show, dim=0))
-                plt.subplot(1, 2, 1)
+                plt.subplot(1, 3, 1)
                 plt.imshow(image_show)
                 # plt.pause(5)
                 label_show = torch.squeeze(label.cpu().float(), dim=0)
-                plt.subplot(1, 2, 2)
+                plt.subplot(1, 3, 2)
                 plt.imshow(label_show)
-                plt.show()
-            optimizer.zero_grad()
-            pred = net(image)  # 4D tensor:  batch size * 1 * 256 * 256
 
+                result_show = pred[0]
+                c, w, h = result_show.size()
+                result = np.zeros((w, h), dtype=float)
+                for i in range(w):
+                    for j in range(h):
+                        cls_result = result_show[:, i, j]
+                        result[i][j] = np.argmax(cls_result.detach().numpy())
+                plt.subplot(1, 3, 3)
+                plt.imshow(result)
+                plt.title(f'epoch: {epoch}')
+                plt.show()
             # ******************** calculate loss ********************
             loss = criterion(input=pred, target=label)
 
