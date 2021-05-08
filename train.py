@@ -28,8 +28,8 @@ batch_size = config.getint('training', 'batch_size')
 epochs = config.getint('training', 'epochs')
 begin_epoch = config.getint('training', 'begin_epoch')
 
-# cuda = torch.cuda.is_available()
-cuda = False
+cuda = torch.cuda.is_available()
+# cuda = False
 
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -46,33 +46,33 @@ train_dataset = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 net = VGG_fcn32s(n_class=3)
 # net = VGG_19bn_8s(n_class=3)
 if cuda:
-    # net = net.to(device)
-    net.cuda()
+    net = net.to(device)
+    # net.cuda()
 # if cuda:
 #     net = net.cuda(device_ids[0])
 #     net = nn.DataParallel(net, device_ids=device_ids)
 
 
-if begin_epoch > 0:
-    save_path = 'ckpt/model_epoch' + str(begin_epoch) + '.pth'
-    state_dict = torch.load(save_path)
-    net.load_state_dict(state_dict)
+# if begin_epoch > 0:
+#     save_path = 'ckpt/model_epoch' + str(begin_epoch) + '.pth'
+#     state_dict = torch.load(save_path)
+#     net.load_state_dict(state_dict)
 
 
 def train(visual_train=False):
     # *********************** initialize optimizer ***********************
     optimizer = optim.Adam(params=net.parameters(), lr=learning_rate)
     criterion = cross_entropy2d_loss()  # loss function pixel-wised softmax cross entropy
-    # if cuda:
-    #     criterion = criterion.to(device)
+    if cuda:
+        criterion = criterion.to(device)
     net.train()
     for epoch in range(begin_epoch, epochs + 1):
         print('epoch....................' + str(epoch))
         # for step, (image, label_map, center_map, imgs) in enumerate(train_dataset):
         for step, (im_input, im_label, image_input_dir, image_label_dir) in enumerate(train_dataset):
-            image = Variable(im_input.cuda() if cuda else im_input)  # 4D Tensor
+            image = Variable(im_input.to(device) if cuda else im_input)  # 4D Tensor
             # Batch_size  *  3  *  width(256)  *  height(256)
-            label = Variable((255 * im_label).cuda() if cuda else (255 * im_label))
+            label = Variable((255 * im_label).to(device) if cuda else (255 * im_label))
             # Batch_size  *  1 *  width(256)  *  height(256)
             label = torch.squeeze(label, dim=1).long()
             # Batch_size  *  width(256)  *  height(256)
@@ -109,7 +109,7 @@ def train(visual_train=False):
                 for i in range(w):
                     for j in range(h):
                         cls_result = result_show[:, i, j]
-                        result[i][j] = np.argmax(cls_result.detach().numpy())
+                        result[i][j] = np.argmax(cls_result.cpu().detach().numpy())
                 plt.subplot(1, 3, 3)
                 plt.imshow(result)
                 plt.title(f'epoch: {epoch}')
@@ -120,6 +120,8 @@ def train(visual_train=False):
             # backward
             loss.backward()
             optimizer.step()
+
+            torch.cuda.empty_cache()
 
             print('--step .....' + str(step))
             print('--loss ' + str(float(loss.cpu())))
