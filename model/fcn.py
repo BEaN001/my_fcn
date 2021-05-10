@@ -17,18 +17,17 @@ class Block(nn.Module):
         return out
 
 
-def make_layers(in_channels, layer_list):
-    layers = []
-    for out_channels in layer_list:
-        layers += [Block(in_channels, out_channels)]
-        in_channels = out_channels
-    return nn.Sequential(*layers)
-
-
 class Layer(nn.Module):
     def __init__(self, in_channels, layer_list):
         super(Layer, self).__init__()
-        self.layer = make_layers(in_channels, layer_list)
+        self.layer = self.make_layers(in_channels, layer_list)
+
+    def make_layers(self, in_channels, layer_list):
+        layers = []
+        for out_channels in layer_list:
+            layers += [Block(in_channels, out_channels)]
+            in_channels = out_channels
+        return nn.Sequential(*layers)
 
     def forward(self, x):
         out = self.layer(x)
